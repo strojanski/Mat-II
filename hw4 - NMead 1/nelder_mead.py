@@ -18,6 +18,7 @@ class Simplex:
         vals = [func(vertex) for vertex in self.vertices]
         sorted_vertices = np.array([self.vertices[i] for i in np.argsort(vals)])
         self.vertices = sorted_vertices
+        return np.sort(vals)
             
     def centroid(self):
         centroid = np.mean(self.vertices[:-1], axis=0)  # Exclude the worst point      
@@ -65,27 +66,46 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
     Returns:
     - The point that minimizes the function.
     """
-
+    no_improve = 0
+    prev_best = float("inf")
+    prev_worst = float("inf")
+    
     for k in range(max_iter):
-        simplex.sort_simplex(func)
+        vals = simplex.sort_simplex(func)
+        f_best, f_mid, f_worst = vals[0], vals[1], vals[-1]
 
-        if simplex.diameter() < tol:
+        diameter = simplex.diameter()
+        if diameter < tol:
             print(f"Converged at iteration {k}.")
             break
         
+        if abs(prev_best - f_best) < 10e-12:
+            no_improve += 1
+            if no_improve > 10:
+                print(f"No improvement for 10 iterations, stopping at iteration {k}.")
+                break
+            else:
+                no_improve = 0
+                prev_best = f_best
+            
+        
         if verbose:
-            best, worst = simplex.vertices[0], simplex.vertices[-1]
-            print(f"iter {k:3d}, best={best}, f={func(best):.6f}, worst={worst}, f={func(worst):.6f}, diameter={simplex.diameter():.6f} ")
+            print(f"iter {k:3d}, diameter={diameter:.6f} ")
+            print("Simplex vertices:\n", simplex.vertices)
+            print("Function values:", f_best, f_mid, f_worst)
+            print("Diff (worst):", prev_worst - f_worst)
+            print("-----------------------\n")
 
+        prev_worst = f_worst
         centroid = simplex.centroid()
         
         # Reflection & Extension
         reflected = simplex.reflect(centroid, alpha)
         reflected_value = func(reflected)   # Dont recompute (can precompute for all vertices each iteration)
         
-        if reflected_value < func(simplex.vertices[-2]):
-            
-            if reflected_value < func(simplex.vertices[0]): # Expand reflection if it was better than the second worst
+        
+        if reflected_value < f_mid:
+            if reflected_value < f_best: # Expand reflection if it was better than the second worst
                 extended = simplex.reflect(centroid, gamma)  
 
                 if func(extended) < reflected_value:
@@ -101,7 +121,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
             continue
 
         # Contraction
-        if reflected_value >= func(simplex.vertices[-2]):
+        if reflected_value >= f_mid:
             # Outside contraction
             contracted = simplex.contract(centroid, reflected, beta, mode='outside')
             contracted_value = func(contracted)
@@ -119,7 +139,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
             contracted = simplex.contract(centroid, reflected, beta, mode='inside')
             contracted_value = func(contracted)
             
-            if contracted_value < func(simplex.vertices[-1]):
+            if contracted_value < f_worst:
                 simplex.vertices[-1] = contracted
                 print("Contracted point (inside):", contracted)
             else:
@@ -145,7 +165,7 @@ def bbox(x ,i=mode):
 if __name__ == "__main__":
     
     
-    start_f1 = np.array([0,0,0], dtype=float)
+    start_f1 = np.array([-5,0,0], dtype=float)
     simplex_f1 = Simplex([start_f1,
                           start_f1 + np.array([10, 0, 0], dtype=float),
                           start_f1 + np.array([0, 10, 0], dtype=float),    
