@@ -1,21 +1,22 @@
-# %% [markdown]
 import numpy as np
 
 np.random.seed(42) 
     
 class Simplex:
     """ For generality """
-    def __init__(self, vertices):        
+    def __init__(self, vertices, mode=1):        
         self.vertices = np.array(vertices)
         self.n_dim = self.vertices[0].shape[0]  # Number of dimensions
         
         assert self.vertices.shape[0] == self.n_dim + 1, "Simplex must have n+1 vertices in n dimensions"
         
+        self.mode = mode
+        
     def __repr__(self):
         return f"Simplex(vertices={self.vertices})"
     
     def sort_simplex(self, func):
-        vals = [func(vertex) for vertex in self.vertices]
+        vals = [func(vertex, i=self.mode) for vertex in self.vertices]
         sorted_vertices = np.array([self.vertices[i] for i in np.argsort(vals)])
         self.vertices = sorted_vertices
         return np.sort(vals)
@@ -52,8 +53,10 @@ alpha = 1.0  # Reflection
 beta = 0.5 # Contraction
 gamma = 2.0  # Expansion
 delta = 0.5 # Shrinkage    
+
+vertices = []
     
-def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
+def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-10, verbose=False, mode=1):
     """
     Perform the Nelder-Mead optimization algorithm in 2D.
 
@@ -79,7 +82,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
             print(f"Converged at iteration {k}.")
             break
         
-        if abs(prev_best - f_best) < 10e-12:
+        if abs(prev_best - f_best) < 10e-13:
             no_improve += 1
             if no_improve > 10:
                 print(f"No improvement for 10 iterations, stopping at iteration {k}.")
@@ -90,7 +93,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
             
         
         if verbose:
-            print(f"iter {k:3d}, diameter={diameter:.6f} ")
+            print(f"iter {k:3d}, diameter={diameter:.12f} ")
             print("Simplex vertices:\n", simplex.vertices)
             print("Function values:", f_best, f_mid, f_worst)
             print("Diff (worst):", prev_worst - f_worst)
@@ -101,14 +104,14 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
         
         # Reflection & Extension
         reflected = simplex.reflect(centroid, alpha)
-        reflected_value = func(reflected)   # Dont recompute (can precompute for all vertices each iteration)
+        reflected_value = func(reflected, mode)   # Dont recompute (can precompute for all vertices each iteration)
         
         
         if reflected_value < f_mid:
             if reflected_value < f_best: # Expand reflection if it was better than the second worst
                 extended = simplex.reflect(centroid, gamma)  
 
-                if func(extended) < reflected_value:
+                if func(extended, mode) < reflected_value:
                     simplex.vertices[-1] = extended
                     print("Extended point:", extended)
                     
@@ -124,7 +127,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
         if reflected_value >= f_mid:
             # Outside contraction
             contracted = simplex.contract(centroid, reflected, beta, mode='outside')
-            contracted_value = func(contracted)
+            contracted_value = func(contracted, mode)
             
             if contracted_value < reflected_value:
                 simplex.vertices[-1] = contracted
@@ -137,7 +140,7 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
         else:
             # Inside contraction
             contracted = simplex.contract(centroid, reflected, beta, mode='inside')
-            contracted_value = func(contracted)
+            contracted_value = func(contracted, mode)
             
             if contracted_value < f_worst:
                 simplex.vertices[-1] = contracted
@@ -147,13 +150,14 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-6, verbose=False):
                 simplex.shrink(delta)
                 print("Shrinking simplex (inside contraction)")
             
+    vertices.append(simplex.vertices)
     return simplex.vertices[0]
 
 import subprocess
 
 mode = 1
 
-def bbox(x ,i=mode):
+def bbox(x, i):
     x,y,z = x
     proc = subprocess.run(["./hw4_1_linux", "63200306", str(i), str(x), str(y), str(z)], check=True, stdout=subprocess.PIPE)
     
@@ -164,19 +168,22 @@ def bbox(x ,i=mode):
 
 if __name__ == "__main__":
     
-    
-    start_f1 = np.array([-5,0,0], dtype=float)
-    simplex_f1 = Simplex([start_f1,
-                          start_f1 + np.array([10, 0, 0], dtype=float),
-                          start_f1 + np.array([0, 10, 0], dtype=float),    
-                          start_f1 + np.array([0, 0, 10], dtype=float)])
-    
-    nelder_mead_f1 = nelder_mead(bbox, simplex_f1, max_iter=1000, tol=1e-7, verbose=True)
-    print(nelder_mead_f1)
-    print(bbox(nelder_mead_f1))
-    print(simplex_f1)
-    
-    
-    
-    
+    for mode in [1,2]:#range(1, 3)[::-1]:
+        print(mode)
+       
+        start_f1 = np.array([-5,0,0], dtype=float)
+        simplex_f1 = Simplex([start_f1,
+                            start_f1 + np.array([10, 0, 0], dtype=float),
+                            start_f1 + np.array([0, 10, 0], dtype=float),    
+                            start_f1 + np.array([0, 0, 10], dtype=float)], mode=mode)
+        
+        nelder_mead_f1 = nelder_mead(bbox, simplex_f1, max_iter=1000, tol=1e-7, verbose=True)
+        print(nelder_mead_f1)
+        print(bbox(nelder_mead_f1, mode))
+        print(f"Final coords: {simplex_f1.vertices[0][0]:.13f}, {simplex_f1.vertices[0][1]:.13f}, {simplex_f1.vertices[0][2]:.13f}")
+        
+        vertices = np.array(vertices)
+
+        np.save(f"vertices_{mode}.npy", vertices)    
+        vertices = []
     
