@@ -55,7 +55,7 @@ beta = 0.5 # Contraction
 gamma = 2.0  # Expansion
 delta = 0.5 # Shrinkage    
 
-vertices = []
+all_vertices = []
     
 def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-10, verbose=False, mode=1):
     """
@@ -76,6 +76,10 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-10, verbose=False,
     
     for k in range(max_iter):
         vals = simplex.sort_simplex(func)
+        
+        step_data = np.hstack([simplex.vertices, np.array(vals).reshape(-1,1)])
+        all_vertices.append(step_data)
+        
         f_best, f_mid, f_worst = vals[0], vals[1], vals[-1]
 
         diameter = simplex.diameter()
@@ -172,7 +176,7 @@ def bbox(x, i):
 
 if __name__ == "__main__":
     
-    for mode in [1,2]:#range(1, 3)[::-1]:
+    for mode in [1,4]:#range(1, 3)[::-1]:
         print(mode)
        
         start_f1 = np.array([-5,0,0], dtype=float)
@@ -186,8 +190,7 @@ if __name__ == "__main__":
         print(bbox(nelder_mead_f1, mode))
         print(f"Final coords: {simplex_f1.vertices[0][0]:.13f}, {simplex_f1.vertices[0][1]:.13f}, {simplex_f1.vertices[0][2]:.13f}")
         
-        vertices = np.array(vertices)
+        np.save(f"vertices_{mode}.npy", np.array(all_vertices))
+        all_vertices = []
 
-        np.save(f"vertices_{mode}.npy", vertices)    
-        vertices = []
     
