@@ -177,7 +177,7 @@ def bbox(x, i):
 
 if __name__ == "__main__":
     
-    for mode in [2,3]:#range(1, 3)[::-1]:
+    for mode in [2]:#range(1, 3)[::-1]:
         print(mode)
        
         start_f1 = np.array([-5,0,0], dtype=float)
