@@ -155,20 +155,21 @@ def nelder_mead(func, simplex: Simplex, max_iter=1000, tol=1e-10, verbose=False,
                 simplex.shrink(delta)
                 print("Shrinking simplex (inside contraction)")
             
-    vertices.append(simplex.vertices)
     return simplex.vertices[0]
 
 import subprocess
 
-mode = 1
 
 def bbox(x, i):
     x,y,z = x
     proc = subprocess.run(["./hw4_1_linux", "63200306", str(i), str(x), str(y), str(z)], check=True, stdout=subprocess.PIPE)
     
     value = proc.stdout.decode('utf-8').strip()
-    value = float(value)
-    
+    try:
+        value = float(value)
+    except ValueError:
+        print(value)
+        exit()
     return value
   
     
@@ -176,7 +177,7 @@ def bbox(x, i):
 
 if __name__ == "__main__":
     
-    for mode in [1,4]:#range(1, 3)[::-1]:
+    for mode in [2,3]:#range(1, 3)[::-1]:
         print(mode)
        
         start_f1 = np.array([-5,0,0], dtype=float)
