@@ -1,3 +1,15 @@
 *.zip
 */*.venv
 */*.lprof
+*/*_linux
+*/*_macos
+*/*_mac
+*/*exe
+*/*dll
+*/*npy
+
+/hw4 - NMead/__MACOSX
+/hw4 - NMead/__pycache__
+/hw4 - NMead/lect0104-NelderMead.nb
+/hw4 - NMead/hw4_1_mac
+/hw4 - NMead/linux_env
